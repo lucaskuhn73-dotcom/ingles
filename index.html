@@ -162,6 +162,65 @@
   .dr-day { font-family: 'Literata', serif; font-size: 14px; font-weight: 600; color: var(--accent); width: 38px; }
   .dr-verbs { font-size: 13px; color: var(--text2); flex: 1; }
   .dr-check { font-size: 15px; }
+
+  /* Toasts */
+  #xp-toast {
+    position: fixed; top: 70px; right: 16px;
+    background: var(--accent); color: #111;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 700;
+    padding: 6px 14px; border-radius: 20px;
+    opacity: 0; transform: translateY(-20px);
+    transition: all 0.3s; pointer-events: none;
+    z-index: 999;
+  }
+  #badge-toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface2); border: 1px solid var(--accent);
+    color: var(--text); font-family: 'DM Sans', sans-serif;
+    font-size: 14px; padding: 12px 20px; border-radius: 12px;
+    opacity: 0; transition: all 0.4s; pointer-events: none;
+    z-index: 999; white-space: nowrap; text-align: center;
+  }
+  /* Streak bar */
+  .streak-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .streak-fire { font-size: 24px; }
+  .streak-info { flex: 1; }
+  .streak-num { font-family: 'Literata', serif; font-size: 22px; font-weight: 700; color: var(--orange); }
+  .streak-label { font-size: 12px; color: var(--muted); }
+  .xp-bar-wrap {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;
+  }
+  .xp-icon { font-size: 22px; }
+  .xp-info { flex: 1; }
+  .xp-num { font-family: 'Literata', serif; font-size: 22px; font-weight: 700; color: var(--accent); }
+  .xp-label { font-size: 12px; color: var(--muted); }
+  /* Fluency meter */
+  .fluency-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; margin-bottom: 14px; text-align: center;
+  }
+  .fluency-num { font-family: 'Literata', serif; font-size: 52px; font-weight: 700; line-height: 1; }
+  .fluency-label { font-size: 12px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
+  .fluency-bar-outer { height: 8px; background: var(--surface2); border-radius: 8px; margin: 14px 0 4px; overflow: hidden; }
+  .fluency-bar-inner { height: 100%; border-radius: 8px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+  /* Badges grid */
+  .badges-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .badge-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .badge-item.locked { opacity: 0.35; }
+  .badge-icon { font-size: 22px; flex-shrink: 0; }
+  .badge-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .badge-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -169,13 +228,19 @@
 </head>
 <body>
 
+<div id="xp-toast"></div>
+<div id="badge-toast"></div>
 <nav>
   <div class="logo">EN·PT</div>
   <button class="nav-btn active" onclick="nav('home',this)">Hoje</button>
   <button class="nav-btn" onclick="nav('stories',this)">Histórias</button>
   <button class="nav-btn" onclick="nav('flash',this)">Flashcards</button>
   <button class="nav-btn" onclick="nav('progress',this)">Progresso</button>
-  <span id="sync-status" style="margin-left:auto;font-size:11px;color:var(--muted);white-space:nowrap;padding-right:8px"></span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:12px;padding-right:8px">
+    <span id="nav-streak" style="font-size:13px;font-weight:700;color:var(--orange)"></span>
+    <span id="nav-xp" style="font-size:12px;color:var(--accent)"></span>
+    <span id="sync-status" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
+  </div>
 </nav>
 
 <!-- HOME -->
@@ -192,10 +257,12 @@
   <div class="page-title">Flashcards</div>
   <div class="page-sub">Algoritmo SM-2 — intervalos reais</div>
 
-  <div class="deck-tabs">
-    <div class="deck-tab active" id="dt1" onclick="selDeck(1)">🗂 Deck 1<br><small style="font-size:11px;font-weight:400">Presente → Passado</small></div>
-    <div class="deck-tab" id="dt2" onclick="selDeck(2)">🗂 Deck 2<br><small style="font-size:11px;font-weight:400">Verbo → Futuro</small></div>
-    <div class="deck-tab" id="dt3" onclick="selDeck(3)">📖 Frases<br><small style="font-size:11px;font-weight:400">Histórias</small></div>
+  <div class="deck-tabs" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr">
+    <div class="deck-tab active" id="dt1" onclick="selDeck(1)">🗂 D1<br><small style="font-size:10px;font-weight:400">Pres→Pass</small></div>
+    <div class="deck-tab" id="dt2" onclick="selDeck(2)">🗂 D2<br><small style="font-size:10px;font-weight:400">Futuro</small></div>
+    <div class="deck-tab" id="dt3" onclick="selDeck(3)">📖 D3<br><small style="font-size:10px;font-weight:400">Frases</small></div>
+    <div class="deck-tab" id="dt4" onclick="selDeck(4)">🔀 Mix<br><small style="font-size:10px;font-weight:400">30/dia</small></div>
+    <div class="deck-tab" id="dt5" onclick="selDeck(5)">📝 D5<br><small style="font-size:10px;font-weight:400">Palavras</small></div>
   </div>
 
   <div class="due-info" id="due-info"></div>
@@ -246,6 +313,33 @@
   <div class="eyebrow">Sua jornada</div>
   <div class="page-title">Progresso</div>
   <div class="page-sub">10 semanas — 70 dias · 210 verbos</div>
+  <!-- Fluency level -->
+  <div class="fluency-card">
+    <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Nível de Fluência</div>
+    <div class="fluency-num" id="fluency-num" style="color:var(--accent)">0</div>
+    <div class="fluency-bar-outer"><div class="fluency-bar-inner" id="fluency-bar" style="width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div></div>
+    <div class="fluency-label" id="fluency-label">Iniciante</div>
+  </div>
+
+  <!-- Streak + XP -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div class="streak-bar">
+      <span class="streak-fire">🔥</span>
+      <div class="streak-info">
+        <div class="streak-num" id="streak-num">0</div>
+        <div class="streak-label">dias seguidos</div>
+      </div>
+    </div>
+    <div class="xp-bar-wrap">
+      <span class="xp-icon">⭐</span>
+      <div class="xp-info">
+        <div class="xp-num" id="xp-num">0</div>
+        <div class="xp-label">XP total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Base stats -->
   <div class="stats-row">
     <div class="stat-box"><div class="stat-n" id="sv">0</div><div class="stat-l">Verbos vistos</div></div>
     <div class="stat-box"><div class="stat-n" id="sd">0</div><div class="stat-l">Dias completos</div></div>
@@ -280,6 +374,15 @@
       </div>
     </div>
   </div>
+  <!-- Mastery bars (existing) will be rendered by JS -->
+  <div id="mastery-section"></div>
+
+  <!-- Badges -->
+  <div class="week-label" style="margin-top:20px">Conquistas</div>
+  <div class="badges-grid" id="badges-grid"></div>
+
+  <!-- Day list -->
+  <div class="week-label" id="week-list-label">Dias</div>
   <div id="prog-days"></div>
 </div>
 
@@ -1395,6 +1498,70 @@ const STORIES = [
       { en:"He exits not because he fails but because he succeeds.", pt:"Ele sai não porque falhou mas porque teve sucesso.", pron:"Rii eksêts nat bêcóz rii feilz bât bêcóz rii sâksiidz." },
     ]},
 ];
+
+const VOCAB_WORDS = [
+  { en:"team", pt:"time / equipe", pron:"tiim", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"client", pt:"cliente", pron:"klaiânt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"company", pt:"empresa", pron:"câmpâni", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"product", pt:"produto", pron:"pradâkt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"plan", pt:"plano", pron:"plén", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"data", pt:"dados", pron:"deitâ", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"business", pt:"negócio", pron:"bêznês", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"problem", pt:"problema", pron:"prablâm", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"meeting", pt:"reunião", pron:"miitêng", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"strategy", pt:"estratégia", pron:"strétêdji", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"contract", pt:"contrato", pron:"cântrekt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"project", pt:"projeto", pron:"prâdjekt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"decision", pt:"decisão", pron:"dêsizhân", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"process", pt:"processo", pron:"prouces", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"results", pt:"resultados", pron:"rêzâlts", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"feedback", pt:"feedback / retorno", pron:"fiidbbék", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"report", pt:"relatório", pron:"rêpórt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"market", pt:"mercado", pron:"markât", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"deal", pt:"negócio / acordo", pron:"diil", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"partner", pt:"parceiro", pron:"pártnâr", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"investor", pt:"investidor", pron:"ênvestâr", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"revenue", pt:"receita", pron:"revêniuu", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"budget", pt:"orçamento", pron:"bâdjêt", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"deadline", pt:"prazo", pron:"dedlain", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"milestone", pt:"marco", pron:"mailstoun", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"goal", pt:"objetivo / meta", pron:"goul", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"vision", pt:"visão", pron:"vêzhân", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"mission", pt:"missão", pron:"mêshân", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"opportunity", pt:"oportunidade", pron:"apârtiunêti", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"challenge", pt:"desafio", pron:"tchélêndj", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"confidence", pt:"confiança", pron:"cânfêdâns", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"failure", pt:"fracasso", pron:"feiliâr", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"success", pt:"sucesso", pron:"sâkses", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"pressure", pt:"pressão", pron:"preshâr", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"performance", pt:"desempenho", pron:"pârfórmâns", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"reputation", pt:"reputação", pron:"repâtêishân", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"solution", pt:"solução", pron:"sâlushân", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"approach", pt:"abordagem", pron:"âproutch", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"progress", pt:"progresso", pron:"prougrâs", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"board", pt:"conselho / diretoria", pron:"bórd", wtype:"noun", wtypePt:"Substantivo" },
+  { en:"confident", pt:"confiante", pron:"cânfêdânt", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"successful", pt:"bem-sucedido", pron:"sâksesfâl", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"unexpected", pt:"inesperado", pron:"ânêkspektêd", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"transparent", pt:"transparente", pron:"trénspérrânt", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"demanding", pt:"exigente", pron:"dêmándêng", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"grateful", pt:"grato", pron:"greitfâl", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"proactive", pt:"proativo", pron:"prouéktêv", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"reactive", pt:"reativo", pron:"riiéktêv", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"profitable", pt:"lucrativo", pron:"práfêtâbâl", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"scalable", pt:"escalável", pron:"skeilâbâl", wtype:"adj", wtypePt:"Adjetivo" },
+  { en:"immediately", pt:"imediatamente", pron:"êmiiditlêi", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"directly", pt:"diretamente", pron:"dêrektli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"clearly", pt:"claramente", pron:"cliirli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"quickly", pt:"rapidamente", pron:"cuuickli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"carefully", pt:"cuidadosamente", pron:"kérfâli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"honestly", pt:"honestamente", pron:"ânêstli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"completely", pt:"completamente", pron:"câmpliitli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"publicly", pt:"publicamente", pron:"pâblêkli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"eventually", pt:"eventualmente / afinal", pron:"êventchuâli", wtype:"adv", wtypePt:"Advérbio" },
+  { en:"particularly", pt:"particularmente", pron:"pârtêkiâlârli", wtype:"adv", wtypePt:"Advérbio" }
+];
+
 // SM-2 ALGORITHM
 // ═══════════════════════════════════════
 // Card record: { id, ef, interval, repetitions, nextReview }
@@ -1465,12 +1632,102 @@ let S = {
   currentDay: 1,
   completedDays: [],
   activeDeck: 1,
-  cardsData: {},   // key -> SM-2 record
+  cardsData: {},
   sessionQueue: [],
   sessionIdx: 0,
   flipped: false,
   totalReviewed: 0,
+  // Gamification
+  xp: 0,
+  streak: 0,
+  lastStudyDate: null,
+  unlockedBadges: [],
 };
+
+// ═══════════════════════════════════════
+// GAMIFICATION
+// ═══════════════════════════════════════
+const BADGES = [
+  { id:'first_day',    icon:'🌱', name:'Primeiro Passo',      desc:'Complete o Dia 1',                 check: () => S.completedDays.length >= 1 },
+  { id:'week1',        icon:'🔥', name:'Uma Semana',           desc:'7 dias completados',               check: () => S.completedDays.length >= 7 },
+  { id:'week2',        icon:'⚡', name:'Duas Semanas',         desc:'14 dias completados',              check: () => S.completedDays.length >= 14 },
+  { id:'month1',       icon:'🏆', name:'Um Mês',               desc:'30 dias completados',              check: () => S.completedDays.length >= 30 },
+  { id:'streak7',      icon:'🔥', name:'Em Chamas',            desc:'7 dias seguidos',                  check: () => S.streak >= 7 },
+  { id:'streak30',     icon:'💎', name:'Inabalável',           desc:'30 dias seguidos',                 check: () => S.streak >= 30 },
+  { id:'cards100',     icon:'🃏', name:'Cem Cartas',           desc:'100 revisões feitas',              check: () => S.totalReviewed >= 100 },
+  { id:'cards500',     icon:'🧠', name:'Memória de Ferro',     desc:'500 revisões feitas',              check: () => S.totalReviewed >= 500 },
+  { id:'xp1000',       icon:'⭐', name:'Mil Pontos',           desc:'1.000 XP acumulados',             check: () => S.xp >= 1000 },
+  { id:'xp5000',       icon:'🌟', name:'Cinco Mil',            desc:'5.000 XP acumulados',             check: () => S.xp >= 5000 },
+  { id:'verbs10',      icon:'✅', name:'Verbo Mestre',         desc:'10 verbos dominados',              check: () => countMasteredVerbs() >= 10 },
+  { id:'verbs30',      icon:'🎓', name:'Fluente',              desc:'30 verbos dominados',              check: () => countMasteredVerbs() >= 30 },
+];
+
+function countMasteredVerbs() {
+  return DAYS.filter(d => d.day <= S.currentDay).flatMap(d => d.verbs)
+    .filter(v => getCard(1,'1_'+v.en).repetitions >= 3 && getCard(2,'2_'+v.en).repetitions >= 3).length;
+}
+
+function calcFluencyLevel() {
+  const totalVerbs = DAYS.filter(d => d.day <= S.currentDay).flatMap(d => d.verbs).length;
+  const masteredVerbs = countMasteredVerbs();
+  const verbScore   = totalVerbs   > 0 ? (masteredVerbs / totalVerbs) * 40 : 0;
+  const reviewScore = Math.min(S.totalReviewed / 500, 1) * 30;
+  const dayScore    = Math.min(S.completedDays.length / 70, 1) * 20;
+  const streakScore = Math.min(S.streak / 30, 1) * 10;
+  return Math.round(verbScore + reviewScore + dayScore + streakScore);
+}
+
+function updateStreak() {
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (S.lastStudyDate === today) return; // already counted today
+  if (S.lastStudyDate === yesterday) {
+    S.streak++;
+  } else if (S.lastStudyDate !== today) {
+    S.streak = 1; // reset or start
+  }
+  S.lastStudyDate = today;
+}
+
+function addXP(amount) {
+  S.xp += amount;
+  showXPToast('+'+amount+' XP');
+}
+
+function showXPToast(msg) {
+  let toast = document.getElementById('xp-toast');
+  if (!toast) return;
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+  }, 1200);
+}
+
+function checkBadges() {
+  let newBadge = null;
+  BADGES.forEach(b => {
+    if (!S.unlockedBadges.includes(b.id) && b.check()) {
+      S.unlockedBadges.push(b.id);
+      newBadge = b;
+    }
+  });
+  if (newBadge) showBadgeToast(newBadge);
+}
+
+function showBadgeToast(badge) {
+  let toast = document.getElementById('badge-toast');
+  if (!toast) return;
+  toast.innerHTML = badge.icon+' <strong>'+badge.name+'</strong> desbloqueado!';
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(20px)';
+  }, 3000);
+}
 
 function cardKey(type, id) { return `d${type}_${id}`; }
 
@@ -1488,11 +1745,21 @@ function getAllCards(deckType) {
     return learned.flatMap(d => d.verbs.map(v => ({ type:1, id:'1_'+v.en, v })));
   } else if (deckType === 2) {
     return learned.flatMap(d => d.verbs.map(v => ({ type:2, id:'2_'+v.en, v })));
-  } else {
+  } else if (deckType === 3) {
     const avail = STORIES.filter(s => s.day <= S.currentDay);
     return avail.flatMap(s => s.sentences.map((sent, i) => ({
       type:3, id:'3_'+s.day+'_'+i, sent
     })));
+  } else if (deckType === 4) {
+    // Deck 4 — mixed: all decks together
+    const d1 = learned.flatMap(d => d.verbs.map(v => ({ type:1, id:'1_'+v.en, v })));
+    const d2 = learned.flatMap(d => d.verbs.map(v => ({ type:2, id:'2_'+v.en, v })));
+    const avail = STORIES.filter(s => s.day <= S.currentDay);
+    const d3 = avail.flatMap(s => s.sentences.map((sent, i) => ({ type:3, id:'3_'+s.day+'_'+i, sent })));
+    return [...d1, ...d2, ...d3];
+  } else {
+    // Deck 5 — vocabulary words (nouns, adjectives, adverbs)
+    return VOCAB_WORDS.map((w, i) => ({ type:5, id:'5_'+w.en, w }));
   }
 }
 
@@ -1506,12 +1773,14 @@ function buildSessionQueue(deckType) {
     const c = getCard(deckType, item.id);
     return c.repetitions === 0;
   });
-  const session = [...due, ...newCards.slice(0, 10)];
+  const newLimit = deckType === 4 ? 30 : 10;
+  const session = [...due, ...newCards.slice(0, newLimit)];
   for (let i = session.length-1; i > 0; i--) {
     const j = Math.floor(Math.random()*(i+1));
     [session[i], session[j]] = [session[j], session[i]];
   }
-  return { session, dueCount: due.length, newCount: Math.min(newCards.length, 10) };
+  const newLimit2 = deckType === 4 ? 30 : 10;
+  return { session, dueCount: due.length, newCount: Math.min(newCards.length, newLimit2) };
 }
 
 // ═══════════════════════════════════════
@@ -1701,6 +1970,7 @@ function renderHome() {
     html += `<button class="complete-btn" disabled>🏆 10 semanas — completo! 🎉</button>`;
   }
   document.getElementById('home-content').innerHTML = html;
+  updateNavStats();
 }
 
 function navStories(scrollToToday) {
@@ -1718,7 +1988,12 @@ function navStories(scrollToToday) {
 }
 
 function completeDay() {
-  if (!S.completedDays.includes(S.currentDay)) S.completedDays.push(S.currentDay);
+  if (!S.completedDays.includes(S.currentDay)) {
+    S.completedDays.push(S.currentDay);
+    addXP(50); // day completion bonus
+    updateStreak();
+    checkBadges();
+  }
   save(); renderHome(); renderProgress();
   if (S.currentDay < 70) {
     setTimeout(() => { S.currentDay++; save(); renderHome(); }, 700);
@@ -1733,7 +2008,10 @@ function goNextDay() {
 // ═══════════════════════════════════════
 function selDeck(n) {
   S.activeDeck = n;
-  [1,2,3].forEach(i => document.getElementById('dt'+i).classList.toggle('active', i===n));
+  [1,2,3,4,5].forEach(i => {
+    const el = document.getElementById('dt'+i);
+    if (el) el.classList.toggle('active', i===n);
+  });
   startSession(); save();
 }
 
@@ -1759,10 +2037,13 @@ function startSession() {
 
   // Due info
   const info = document.getElementById('due-info');
-  if (dueCount > 0 || newCount > 0) {
-    info.innerHTML = `<span class="due-num">${dueCount}</span> para revisar &nbsp;·&nbsp; <span class="new-num">${newCount}</span> novas`;
-  } else {
-    info.innerHTML = `<span style="color:var(--green)">✓ Tudo em dia!</span>`;
+  if (info) {
+    const maxNew = S.activeDeck === 4 ? 30 : 10;
+    if (dueCount > 0 || newCount > 0) {
+      info.innerHTML = '<span class="due-num">'+dueCount+'</span> para revisar &nbsp;·&nbsp; <span class="new-num">'+newCount+'</span> novas (máx '+maxNew+'/dia)';
+    } else {
+      info.innerHTML = '<span style="color:var(--green)">✓ Tudo em dia!</span>';
+    }
   }
 
   showCard();
@@ -1838,8 +2119,13 @@ function renderCardFront(item) {
     el.innerHTML = `<div class="fc-word">${v.en}</div>
       <div class="fc-pt">${v.pt}</div>
       <div class="fc-pron">${v.pron}</div>`;
+  } else if (item.type === 3) {
+    el.innerHTML = '<div class="fc-sentence">'+item.sent.en+'</div>';
   } else {
-    el.innerHTML = `<div class="fc-sentence">${item.sent.en}</div>`;
+    // Type 5 — vocabulary word
+    const w = item.w;
+    el.innerHTML = '<div class="fc-word">'+w.en+'</div>'
+      + '<div style="font-size:12px;color:var(--accent2);background:rgba(126,184,247,0.1);padding:3px 10px;border-radius:20px;margin-top:8px">'+w.wtypePt+'</div>';
   }
 }
 
@@ -1871,12 +2157,21 @@ function renderCardBack(item) {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-  } else {
+  } else if (item.type === 3) {
     const s = item.sent;
     el.innerHTML = `<div class="back-story">
       <div class="bs-en">${s.en}</div>
       <div class="bs-pt">🇧🇷 ${s.pt}</div>
       <div class="bs-pron">🔊 ${s.pron}</div>
+    </div>`;
+  } else {
+    // Type 5 — vocabulary word
+    const w = item.w;
+    el.innerHTML = `<div style="text-align:center;width:100%">
+      <div style="font-family:Literata,serif;font-size:28px;font-weight:700;color:var(--text);margin-bottom:10px">${w.en}</div>
+      <div style="font-size:20px;color:var(--accent);margin-bottom:10px">${w.pt}</div>
+      <div style="font-size:13px;color:var(--accent2);background:rgba(126,184,247,0.1);padding:4px 14px;border-radius:20px;display:inline-block;margin-bottom:10px">🔊 ${w.pron}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;letter-spacing:1px;text-transform:uppercase">${w.wtypePt}</div>
     </div>`;
   }
 }
@@ -1899,6 +2194,12 @@ function rate(q) {
   const updated = sm2(c, q);
   S.cardsData[key] = { ...c, ...updated };
   S.totalReviewed++;
+
+  // XP
+  const xpMap = { 0: 3, 3: 7, 5: 10 };
+  addXP(xpMap[q] || 5);
+  updateStreak();
+  checkBadges();
   save();
 
   // If failed, push to end of queue for re-review this session
@@ -1950,6 +2251,13 @@ function renderStories() {
 // ═══════════════════════════════════════
 // PROGRESS
 // ═══════════════════════════════════════
+function updateNavStats() {
+  const ns = document.getElementById('nav-streak');
+  const nx = document.getElementById('nav-xp');
+  if (ns) ns.textContent = S.streak > 0 ? '🔥 '+S.streak : '';
+  if (nx) nx.textContent = S.xp > 0 ? '⭐ '+S.xp : '';
+}
+
 function renderProgress() {
   const verbsSeen = S.completedDays.length * 3;
   document.getElementById('sv').textContent = verbsSeen;
@@ -1980,13 +2288,65 @@ function renderProgress() {
     });
   });
 
-  document.getElementById('dom-verbs').textContent = verbsMastered;
-  document.getElementById('dom-verbs-total').textContent = ` / ${totalVerbs}`;
-  document.getElementById('bar-verbs').style.width = totalVerbs > 0 ? `${Math.round(verbsMastered/totalVerbs*100)}%` : '0%';
+  // Move mastery bars into mastery-section div
+  const masteryEl = document.getElementById('mastery-section');
+  if (masteryEl) {
+    masteryEl.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px">Domínio</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Verbos dominados <span style="font-size:11px;color:var(--muted)">(≥3 acertos)</span></div>
+          <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden"><div style="height:100%;background:var(--green);border-radius:4px;width:${totalVerbs>0?Math.round(verbsMastered/totalVerbs*100):0}%"></div></div>
+        </div>
+        <div style="text-align:right;min-width:50px">
+          <span style="font-family:Literata,serif;font-size:22px;font-weight:700;color:var(--green)">${verbsMastered}</span>
+          <span style="font-size:12px;color:var(--muted)"> / ${totalVerbs}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="flex:1">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:6px">Frases dominadas <span style="font-size:11px;color:var(--muted)">(≥3 acertos)</span></div>
+          <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden"><div style="height:100%;background:var(--accent2);border-radius:4px;width:${totalSents>0?Math.round(sentsMastered/totalSents*100):0}%"></div></div>
+        </div>
+        <div style="text-align:right;min-width:50px">
+          <span style="font-family:Literata,serif;font-size:22px;font-weight:700;color:var(--accent2)">${sentsMastered}</span>
+          <span style="font-size:12px;color:var(--muted)"> / ${totalSents}</span>
+        </div>
+      </div>
+    </div>`;
+  }
 
-  document.getElementById('dom-sents').textContent = sentsMastered;
-  document.getElementById('dom-sents-total').textContent = ` / ${totalSents}`;
-  document.getElementById('bar-sents').style.width = totalSents > 0 ? `${Math.round(sentsMastered/totalSents*100)}%` : '0%';
+  // ── Fluency level ──
+  const fluency = calcFluencyLevel();
+  const fluencyLabels = ['Iniciante','Básico','Elementar','Intermediário','Avançado','Fluente'];
+  const fluencyLabel = fluency >= 90?'Fluente':fluency>=70?'Avançado':fluency>=50?'Intermediário':fluency>=30?'Elementar':fluency>=15?'Básico':'Iniciante';
+  const fluencyColors = {Iniciante:'var(--muted)',Básico:'var(--accent2)',Elementar:'var(--accent2)',Intermediário:'var(--orange)',Avançado:'var(--green)',Fluente:'var(--accent)'};
+  const fn = document.getElementById('fluency-num');
+  const fb = document.getElementById('fluency-bar');
+  const fl = document.getElementById('fluency-label');
+  if (fn) { fn.textContent = fluency; fn.style.color = fluencyColors[fluencyLabel]; }
+  if (fb) fb.style.width = fluency+'%';
+  if (fl) fl.textContent = fluencyLabel;
+
+  // ── Streak + XP ──
+  const sn = document.getElementById('streak-num');
+  const xn = document.getElementById('xp-num');
+  if (sn) sn.textContent = S.streak;
+  if (xn) xn.textContent = S.xp.toLocaleString();
+  updateNavStats();
+
+  // ── Badges ──
+  const bg = document.getElementById('badges-grid');
+  if (bg) {
+    bg.innerHTML = BADGES.map(b => {
+      const unlocked = S.unlockedBadges.includes(b.id);
+      return '<div class="badge-item'+(unlocked?'':' locked')+'">'
+        +'<span class="badge-icon">'+b.icon+'</span>'
+        +'<div><div class="badge-name">'+b.name+'</div><div class="badge-desc">'+b.desc+'</div></div>'
+        +'</div>';
+    }).join('');
+  }
 
   // ── Day list grouped by week ──
   const list = document.getElementById('prog-days');
